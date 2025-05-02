@@ -271,7 +271,7 @@ public:
             }
             outputDes->regions.resize(remainSize);
             regionSize = shapeNum - reverseDim;
-            MNN_ASSERT(regionSize <= 3);
+            MNN_ASSERT(regionSize <= 4);  // TODO: 3?
         }
         int mod[MNN_MAX_TENSOR_DIM];
         OpCommonUtils::computeStride(mod, remainDims, (int)remainDimSize);

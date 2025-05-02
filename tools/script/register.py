@@ -11,7 +11,7 @@ def generateShape(rootDir):
             return
         if ".hpp" in f:
             return
-        with open(f) as fileC:
+        with open(f, encoding='utf-8') as fileC:
             c = fileC.read().split('\n')
             c = list(filter(lambda l:l.find('REGISTER_SHAPE')>=0, c))
             for l in c:
@@ -102,7 +102,7 @@ def generateCPUFile(rootDir):
             f = os.path.join(dirname, fi)
             if os.path.isdir(f):
                 continue
-            with open(f) as fileC:
+            with open(f, encoding='utf-8') as fileC:
                 c = fileC.read().split('\n')
                 c = list(filter(lambda l:l.find('REGISTER_CPU_OP_CREATOR')>=0, c))
                 c = list(filter(lambda l:l.find('OpType')>=0, c))
@@ -168,7 +168,7 @@ def generateOPENCLFile(rootDir):
             f = os.path.join(dirname, fi)
             if os.path.isdir(f):
                 continue
-            with open(f) as fileC:
+            with open(f, encoding='utf-8') as fileC:
                 c = fileC.read().split('\n')
                 c = list(filter(lambda l:l.find('REGISTER_OPENCL_OP_CREATOR')>=0, c))
                 c = list(filter(lambda l:l.find('OpType')>=0, c))
@@ -239,7 +239,7 @@ def generateGeoFile(rootDir):
         f = os.path.join(geoDir, fi)
         if os.path.isdir(f):
             continue
-        with open(f) as fileC:
+        with open(f, encoding='utf-8') as fileC:
             c = fileC.read().split('\n')
             c = list(filter(lambda l:l.find('REGISTER_GEOMETRY')>=0, c))
             for l in c:
@@ -276,7 +276,7 @@ def generateCoreMLFile(rootDir):
         f = os.path.join(coremlExeDir, fi)
         if os.path.isdir(f):
             continue
-        with open(f) as fileC:
+        with open(f, encoding='utf-8') as fileC:
             c = fileC.read().split('\n')
             c = list(filter(lambda l:l.find('REGISTER_COREML_OP_CREATOR')>=0, c))
             c = list(filter(lambda l:l.find('OpType')>=0, c))
@@ -312,7 +312,7 @@ def generateNNAPIFile(rootDir):
         f = os.path.join(coremlExeDir, fi)
         if os.path.isdir(f):
             continue
-        with open(f) as fileC:
+        with open(f, encoding='utf-8') as fileC:
             c = fileC.read().split('\n')
             c = list(filter(lambda l:l.find('REGISTER_NNAPI_OP_CREATOR')>=0, c))
             c = list(filter(lambda l:l.find('OpType')>=0, c))
