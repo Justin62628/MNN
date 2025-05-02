@@ -23,7 +23,7 @@ class SceneDetector:
         assert img0.ndim == 3 and img0.dtype == np.uint8 and img0.shape[2] == 3
         assert img1.ndim == 3 and img1.dtype == np.uint8 and img1.shape[2] == 3
         assert img2.ndim == 3 and img2.dtype == np.uint8 and img2.shape[2] == 3
-        result = [1/(1+np.exp(i)) for i in self._detector.detect(img0, img1, img2)]
+        result = [1/(1+np.exp(-i)) for i in self._detector.detect(img0, img1, img2)]
         return result
 
 
