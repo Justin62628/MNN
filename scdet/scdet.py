@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-sys.path.append("D:/Program/VSsource/comm_repos/MNN/build/Release")
+sys.path.append("D:/Program/VSsource/comm_repos/MNN/build/")
 import scdet_mnn
 
 _SceneDetector = scdet_mnn.SceneDetector
@@ -31,10 +31,11 @@ if __name__ == "__main__":
     import cv2
     import time
     # 初始化
-    sd = SceneDetector("scdet/scdet.mnn")
+    sd = SceneDetector("D:/60-fps-Project/Projects/RIFE GUI/models/scdet/scdet.mnn")
     # 读取两张 RGB 图像
     img0 = cv2.resize(cv2.cvtColor(cv2.imread("demo/exec/test_input/input.png"), cv2.COLOR_BGR2RGB), (448, 252))
     img1 = cv2.resize(cv2.cvtColor(cv2.imread("demo/exec/test_input/input.png"), cv2.COLOR_BGR2RGB), (448, 252))
+    # img1 = cv2.resize(cv2.cvtColor(cv2.imread("demo/exec/test_input/output.png"), cv2.COLOR_BGR2RGB), (448, 252))
     img2 = cv2.resize(cv2.cvtColor(cv2.imread("demo/exec/test_input/output.png"), cv2.COLOR_BGR2RGB), (448, 252))
     # 推理
 

@@ -16,34 +16,31 @@ public:
         // 初始化Feature模型
         BackendConfig backendConfig;
         backendConfig.precision = BackendConfig::Precision_Low;
+        backendConfig.power = BackendConfig::Power_High;
         backendConfig.memory = BackendConfig::Memory_Low;
         
-        ScheduleConfig feat_config;
-        feat_config.backendConfig = &backendConfig;
-        feat_config.type  = MNN_FORWARD_CPU;
-        // feat_config.type  = MNN_FORWARD_OPENCL;
+        ScheduleConfig config;
+        config.backendConfig = &backendConfig;
+        // feat_config.type  = MNN_FORWARD_CPU;
+        config.type  = MNN_FORWARD_OPENCL;
         // feat_config.type  = MNN_FORWARD_VULKAN;
-        feat_config.numThread = 16;
+        config.numThread = 16;
+        config.mode = MNN_GPU_TUNING_NORMAL; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
 
-        feat_net.reset(Interpreter::createFromFile(feat_path.c_str()), Interpreter::destroy);
+        auto runtimeInfo = Interpreter::createRuntime({config});
+
+        feat_net.reset(Interpreter::createFromFile(feat_path.c_str()), Interpreter::destroy);  // shared ptr
         feat_net->setSessionMode(Interpreter::Session_Backend_Fix);
         feat_net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
         feat_net->setCacheFile("feat.cache");
-        feat_session = feat_net->createSession(feat_config);
-        
-        ScheduleConfig fusion_config;
-        fusion_config.backendConfig = &backendConfig;
-        fusion_config.type  = MNN_FORWARD_CPU;
-        // fusion_config.type  = MNN_FORWARD_OPENCL;
-        // fusion_config.type  = MNN_FORWARD_VULKAN;
-        fusion_config.numThread = 16;
+        feat_session = feat_net->createSession(config, runtimeInfo);
 
         // 初始化Fusion模型
         fusion_net.reset(Interpreter::createFromFile(fusion_path.c_str()), Interpreter::destroy);
         fusion_net->setSessionMode(Interpreter::Session_Backend_Fix);
         fusion_net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
         fusion_net->setCacheFile("fusion.cache");
-        fusion_session = fusion_net->createSession(fusion_config);
+        fusion_session = fusion_net->createSession(config, runtimeInfo);
 
         // 预分配特征模型输出存储
         feature_outputs = {"flow01", "flow10", "metric0", "metric1", 
@@ -119,7 +116,11 @@ private:
         // 缓存特征输出
         for (const auto& name : feature_outputs) {
             auto tensor = feat_net->getSessionOutput(feat_session, name.c_str());
-            cached_features[name] = std::shared_ptr<Tensor>(tensor->clone(tensor), Tensor::destroy);
+
+            auto nchwTensor = std::make_shared<Tensor>(tensor, Tensor::CAFFE);
+            tensor->copyToHostTensor(nchwTensor.get());
+            
+            cached_features[name] = nchwTensor;
         }
         
     }
@@ -195,9 +196,9 @@ private:
     }
 
     void copy_data_to_tensor(Tensor* dest, void* src, int B, int C, int H, int W) {
-        std::shared_ptr<Tensor> host_tensor(
-            Tensor::create<float>({B, C, H, W}, src, Tensor::CAFFE));
-        dest->copyFromHostTensor(host_tensor.get());
+        auto nchwTensor = Tensor::create<float>({B, C, H, W}, src, Tensor::CAFFE);
+        dest->copyFromHostTensor(nchwTensor);
+        delete nchwTensor;
     }
 };
 

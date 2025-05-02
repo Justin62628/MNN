@@ -15,17 +15,22 @@ public:
         net.reset(Interpreter::createFromFile(model_path.c_str()), Interpreter::destroy);
         net->setSessionMode(Interpreter::Session_Backend_Fix);
         net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
-        ScheduleConfig config;
         BackendConfig backendConfig;
         backendConfig.precision = BackendConfig::Precision_Low;
+        backendConfig.power = BackendConfig::Power_High;
+        backendConfig.memory = BackendConfig::Memory_Low;
+        ScheduleConfig config;
         config.backendConfig = &backendConfig;
         config.type = MNN_FORWARD_OPENCL;
-        config.numThread = 4;
+        config.numThread = 8;
+        config.mode = MNN_GPU_TUNING_NORMAL; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
+
         session = net->createSession(config);
 
         // 获取模型输入（两路差分）
-        input0 = net->getSessionInput(session, "input0");
-        input1 = net->getSessionInput(session, "input1");
+        input0 = net->getSessionInput(session, "x0");
+        input1 = net->getSessionInput(session, "x1");
+        input2 = net->getSessionInput(session, "x2");
         auto shape = input0->shape();
         size_w = shape[3]; size_h = shape[2];
 
@@ -41,7 +46,7 @@ public:
         // 预分配三帧预处理后的主机端 Tensor
         temp_host0.reset(new Tensor(input0, Tensor::CAFFE));
         temp_host1.reset(new Tensor(input1, Tensor::CAFFE));
-        temp_host2.reset(new Tensor(input1, Tensor::CAFFE));
+        temp_host2.reset(new Tensor(input2, Tensor::CAFFE));
     }
 
     std::pair<float, float> detect(
@@ -75,21 +80,9 @@ public:
         pretreat->convert(ptr2, W, H, 0,
                           temp_host2->host<uint8_t>(), size_w, size_h, 3, 0, temp_host2->getType());
 
-        // —— 计算差分：img1−img0 和 img2−img1 —— 
-        auto d0 = temp_host0->host<float>();
-        auto d1 = temp_host1->host<float>();
-        auto d2 = temp_host2->host<float>();
-        int count = size_w * size_h * 3;
-        for (int i = 0; i < count; ++i) {
-            float v0 = d1[i] - d0[i];
-            float v1 = d2[i] - d1[i];
-            d0[i] = v0;   // 差分结果写回 temp_host0
-            d1[i] = v1;   // 差分结果写回 temp_host1
-        }  // TODO: https://mnn-docs.readthedocs.io/en/latest/inference/expr.html
-
-        // —— 将差分图拷贝到模型输入，执行推理 —— 
         input0->copyFromHostTensor(temp_host0.get());
         input1->copyFromHostTensor(temp_host1.get());
+        input2->copyFromHostTensor(temp_host2.get());
         {
             py::gil_scoped_release release;
             net->runSession(session);
@@ -101,13 +94,13 @@ public:
         output->copyToHostTensor(&result);
         float *out_data = result.host<float>();
         int stride = result.stride(1);
-        return { out_data[0], out_data[stride] };
+        return { out_data[0], out_data[0] };
     }
 
 private:
     std::shared_ptr<Interpreter> net;
     Session *session;
-    Tensor *input0, *input1;
+    Tensor *input0, *input1, *input2;
     int size_w, size_h, cached_w, cached_h;
     std::unique_ptr<Matrix> trans;
     std::shared_ptr<ImageProcess> pretreat;

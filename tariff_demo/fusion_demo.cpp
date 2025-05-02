@@ -28,16 +28,22 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
     std::shared_ptr<Interpreter> net(Interpreter::createFromFile(argv[1]), Interpreter::destroy);
-    net->setSessionMode(Interpreter::Session_Backend_Auto);
+    net->setSessionMode(Interpreter::Session_Backend_Fix);
     net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
     net->setCacheFile("fusion.cache");
-    ScheduleConfig config;
+
     BackendConfig backendConfig;
     backendConfig.precision = BackendConfig::Precision_Low;
+    backendConfig.power = BackendConfig::Power_High;
     backendConfig.memory = BackendConfig::Memory_Low;
+    
+    ScheduleConfig config;
     config.backendConfig = &backendConfig;
-    config.type  = MNN_FORWARD_OPENCL;
-    config.numThread = 8;
+    config.type  = MNN_FORWARD_CPU;
+    // config.type  = MNN_FORWARD_OPENCL;
+    // feat_config.type  = MNN_FORWARD_VULKAN;
+    config.numThread = 16;
+    config.mode = MNN_GPU_TUNING_NORMAL; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
 
     // BackendConfig bnconfig;
     // bnconfig.precision = BackendConfig::Precision_Low;
@@ -48,8 +54,10 @@ int main(int argc, const char* argv[]) {
     std::vector<std::string> input_names = {"img0", "img1", "flow01", "flow10", "metric0", "metric1", "feat11", "feat12", "feat13", "feat21", "feat22", "feat23", "timestep"};
 
     int i=0;
+    // print img0 shape
     for (auto& name : input_names) {
         auto input = net->getSessionInput(session, name.c_str());
+        MNN_PRINT("%s shape: %d %d %d %d\n", name.c_str(), input->shape()[0], input->shape()[1], input->shape()[2], input->shape()[3]);
         cnpy::NpyArray input_npy = cnpy::npy_load(argv[2+i]);
         std::shared_ptr<Tensor> tensorInput(Tensor::create<float>(input->shape(), input_npy.data<float>(), Tensor::CAFFE));
         input->copyFromHostTensor(tensorInput.get());
