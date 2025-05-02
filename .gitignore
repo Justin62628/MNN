@@ -373,3 +373,5 @@ model/
 # datasets
 datasets/*
 !datasets/*.sh
+
+/*.cache

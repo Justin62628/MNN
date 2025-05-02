@@ -861,6 +861,9 @@ ENDIF()
 # SVFI PROJECT
 include(${CMAKE_CURRENT_LIST_DIR}/scdet/CMakeLists.txt)
 include(${CMAKE_CURRENT_LIST_DIR}/scdet_demo/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/softsplat/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/tariff_demo/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/tariff/CMakeLists.txt)
 
 IF(MNN_BUILD_TOOLS)
 include(${CMAKE_CURRENT_LIST_DIR}/tools/cpp/CMakeLists.txt)

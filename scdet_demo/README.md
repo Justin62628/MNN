@@ -20,4 +20,7 @@ MNNConvert -f ONNX --modelFile scdet/scdet.onnx --MNNModel scdet/scdet.mnn --kee
 - Modify `scdet/scdet.py` path
 - `python scdet/scdet.py`
 - Modify `scdet/scdet_py.cpp` if needed.
+
+```bash
+./build/MNNConvert.exe -f ONNX --modelFile "E:/Library/Downloads/model.onnx" --MNNModel  "D:/60-fps-Project/Projects/RIFE GUI/models/scdet/scdet.mnn"  --allowCustomOp  --saveStaticModel --debug --optimizeLevel 3 --info
 ```
