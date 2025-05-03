@@ -210,7 +210,7 @@ const char* attention_buf =
 "}\n"
 "__kernel void qkv_transpose_output(GLOBAL_SIZE_3_DIMS\n"
 " __global const FLOAT *input,// [Batch*mNumHead,ROUND_UP(mHeadDim,mTileHDN),ROUND_UP(seqLen,mTileQ)]\n"
-" __global FLOAT *output,// [Batch,seqLen/4,mNumHeadï¼Œ mHeadDim,4]\n"
+" __global FLOAT *output,// [Batch,seqLen/4,mNumHead£¬ mHeadDim,4]\n"
 " __private const int tile_q,\n"
 " __private const int tile_hdn,\n"
 " __private const int seq_len,\n"

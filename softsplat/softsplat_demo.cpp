@@ -33,8 +33,16 @@ int main(int argc, const char* argv[]) {
 
     // 1. Load MNN Model
     std::shared_ptr<Interpreter> net(Interpreter::createFromFile(argv[1]), Interpreter::destroy);
+    net->setSessionMode(Interpreter::Session_Backend_Fix);
+    net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
     ScheduleConfig config;
-    config.type = MNN_FORWARD_CPU; // 可根据需要修改计算后端
+    BackendConfig backendConfig;
+    backendConfig.precision = BackendConfig::Precision_Low;
+    config.backendConfig = &backendConfig;
+    config.type = MNN_FORWARD_OPENCL;
+    // config.type = MNN_FORWARD_CPU;
+    // config.numThread = 1;
+    // config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
     auto session = net->createSession(config);
 
     // 2. Prepare Input Tensors
@@ -81,8 +89,8 @@ int main(int argc, const char* argv[]) {
         inY_shape.push_back(inputY->length(i)); 
     }
     cnpy::npy_save("out.npy", outputUser->host<float>(), output_shape, "w");
-    cnpy::npy_save("in_x.npy", inputX->host<float>(), inX_shape, "w");
-    cnpy::npy_save("in_y.npy", inputY->host<float>(), inY_shape, "w");
+    // cnpy::npy_save("in_x.npy", inputX->host<float>(), inX_shape, "w");
+    // cnpy::npy_save("in_y.npy", inputY->host<float>(), inY_shape, "w");
 
     MNN_PRINT("Inference completed. Result saved to out.npy\n");
     return 0;

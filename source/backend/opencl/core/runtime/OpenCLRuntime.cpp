@@ -457,13 +457,36 @@ bool OpenCLRuntime::buildProgram(const std::string &buildOptionsStr, cl::Program
     AUTOTIME;
     cl_int ret = program->build({*mFirstGPUDevicePtr}, buildOptionsStr.c_str());
     if (ret != CL_SUCCESS) {
-        if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(*mFirstGPUDevicePtr) == CL_BUILD_ERROR) {
-            std::string buildLog = program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(*mFirstGPUDevicePtr);
-            MNN_PRINT("Program build log: %s \n", buildLog.c_str());
+        MNN_PRINT("Build program failed, err: %d !\n", ret);
+
+        // 获取 cl_program 对象
+        cl_program clProgram = program->get();
+
+        // 第一步：获取构建日志的长度
+        size_t logSize;
+        cl_int clErr = clGetProgramBuildInfo(
+            clProgram, mFirstGPUDevicePtr->get(), CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
+        if (clErr != CL_SUCCESS) {
+            MNN_PRINT("Failed to get build log size, error: %d\n", clErr);
+            return false;
         }
-        MNN_PRINT("Build program failed, err:%d ! \n", ret);
+
+        // 第二步：分配缓冲区并获取日志
+        std::vector<char> buildLog(logSize);
+        clErr = clGetProgramBuildInfo(
+            clProgram, mFirstGPUDevicePtr->get(), CL_PROGRAM_BUILD_LOG,
+            logSize, buildLog.data(), nullptr);
+        if (clErr != CL_SUCCESS) {
+            MNN_PRINT("Failed to retrieve build log, error: %d\n", clErr);
+            return false;
+        }
+
+        // 第三步：输出日志
+        MNN_PRINT("Build Log:\n%s\n", buildLog.data());
+
         return false;
     }
+
     return true;
 }
 

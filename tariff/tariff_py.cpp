@@ -15,32 +15,43 @@ public:
     TariffProcessor(const std::string& feat_path, const std::string& fusion_path) {
         // 初始化Feature模型
         BackendConfig backendConfig;
-        backendConfig.precision = BackendConfig::Precision_Low;
-        backendConfig.power = BackendConfig::Power_High;
-        backendConfig.memory = BackendConfig::Memory_Low;
+        // backendConfig.precision = BackendConfig::Precision_High;
+        // backendConfig.power = BackendConfig::Power_High;
+        // backendConfig.memory = BackendConfig::Memory_Low;
         
-        ScheduleConfig config;
-        config.backendConfig = &backendConfig;
+        ScheduleConfig feat_config;
+        feat_config.backendConfig = &backendConfig;
         // feat_config.type  = MNN_FORWARD_CPU;
-        config.type  = MNN_FORWARD_OPENCL;
+        feat_config.type  = MNN_FORWARD_OPENCL;
         // feat_config.type  = MNN_FORWARD_VULKAN;
-        config.numThread = 16;
-        config.mode = MNN_GPU_TUNING_NORMAL; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
+        // feat_config.numThread = 1;
+        // feat_config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER;
+        feat_config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER;
 
-        auto runtimeInfo = Interpreter::createRuntime({config});
+        auto runtimeInfo = Interpreter::createRuntime({feat_config});
 
         feat_net.reset(Interpreter::createFromFile(feat_path.c_str()), Interpreter::destroy);  // shared ptr
         feat_net->setSessionMode(Interpreter::Session_Backend_Fix);
-        feat_net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
+        // feat_net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
         feat_net->setCacheFile("feat.cache");
-        feat_session = feat_net->createSession(config, runtimeInfo);
+        feat_session = feat_net->createSession(feat_config, runtimeInfo);
 
         // 初始化Fusion模型
+        ScheduleConfig fusion_config;
+        fusion_config.backendConfig = &backendConfig;
+        fusion_config.type  = MNN_FORWARD_CPU;
+        // feat_config.type  = MNN_FORWARD_OPENCL;
+        // feat_config.type  = MNN_FORWARD_VULKAN;
+        // fusion_config.numThread = 16;
+        // feat_config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER;
+        // fusion_config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER;
+
         fusion_net.reset(Interpreter::createFromFile(fusion_path.c_str()), Interpreter::destroy);
         fusion_net->setSessionMode(Interpreter::Session_Backend_Fix);
-        fusion_net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
+        // fusion_net->setSessionHint(Interpreter::MAX_TUNING_NUMBER, 5);
         fusion_net->setCacheFile("fusion.cache");
-        fusion_session = fusion_net->createSession(config, runtimeInfo);
+        // fusion_session = fusion_net->createSession(fusion_config, runtimeInfo);
+        fusion_session = fusion_net->createSession(fusion_config);
 
         // 预分配特征模型输出存储
         feature_outputs = {"flow01", "flow10", "metric0", "metric1", 

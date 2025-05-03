@@ -42,8 +42,10 @@ int main(int argc, const char* argv[]) {
     config.type  = MNN_FORWARD_CPU;
     // config.type  = MNN_FORWARD_OPENCL;
     // feat_config.type  = MNN_FORWARD_VULKAN;
-    config.numThread = 16;
-    config.mode = MNN_GPU_TUNING_NORMAL; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
+    // config.numThread = 68;  // normal + buffer
+    // config.numThread = 1;
+    // config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
+    // config.mode = MNN_GPU_TUNING_WIDE | MNN_GPU_MEMORY_BUFFER; // MNN_GPU_MEMORY_BUFFER, MNN_GPU_MEMORY_IMAGE?
 
     // BackendConfig bnconfig;
     // bnconfig.precision = BackendConfig::Precision_Low;
@@ -81,6 +83,6 @@ int main(int argc, const char* argv[]) {
     }
 
     MNN_PRINT("Inference completed. Result saved to out.npy\n");
-    net->updateCacheFile(session);
+    // net->updateCacheFile(session);
     return 0;
 }
