@@ -17,11 +17,16 @@ cmake -G "Ninja" -DMNN_BUILD_SHARED_LIBS=OFF -DMNN_BUILD_CONVERTER=ON  -DMNN_WIN
 ```
 
 ```bash
-.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\softsplat_test.onnx" --MNNModel  'd:\60-fps-Project\Projects\RIFE GUI\softsplat_test.mnn'
+# change resolution
+# D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\Tariff2Mnn_workable.py
 
 .\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\fusion.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_nb202_mnn\fusion_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
 
-.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\feature.onnx" --MNNModel  'd:\60-fps-Project\Projects\RIFE GUI\feature_s.mnn'
+.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\feature.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_nb202_mnn\feature_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
+
+.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\fusion.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_nb202_mnn\fusion_1080.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
+
+.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\feature.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_nb202_mnn\feature_1080.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
 ```
 
 ## softsplat
@@ -31,4 +36,9 @@ python .\opencl_codegen.py .
 
 cd root
 python tools\script\register.py .
+```
+
+```bash
+.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\softsplat_test.onnx" --MNNModel  'd:\60-fps-Project\Projects\RIFE GUI\softsplat_test.mnn'
+
 ```

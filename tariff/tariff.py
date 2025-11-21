@@ -41,10 +41,12 @@ if __name__ == "__main__":
     import torch.nn.functional as F
     import os
     # processor = TariffProcessor("D:/60-fps-Project/Projects/RIFE GUI/feature_s.mnn", "D:/60-fps-Project/Projects/RIFE GUI/fusion_s.mnn")
-    processor = TariffProcessor("D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/feature_540.mnn", 
-                                "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_540.mnn")
-    size = (960, 576)
-    # size = (1920, 1088)
+    # processor = TariffProcessor("D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/feature_540.mnn", 
+    #                             "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_540.mnn")
+    processor = TariffProcessor("D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/feature_1080.mnn", 
+                                "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_1080.mnn")
+    # size = (960, 576)
+    size = (1920, 1088)
     
     image_root = "D:/60-fps-Project/Projects/RIFE GUI/test_material/images/"
     output_root = os.path.join(image_root, 'out/')
