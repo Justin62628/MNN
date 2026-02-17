@@ -12,40 +12,27 @@ class TariffProcessor:
         Initialize the Tariff pipeline.
         :param feat_model_path: Feature extraction model path (.mnn)
         :param fusion_model_path: Fusion model path (.mnn)
-        :param model_type: "nb202" (coords-based) or "pwr" (scale-based)
+        :param model_type: "nb202" or "pwr"
         """
         self._processor = tariff_mnn.TariffProcessor(feat_model_path, fusion_model_path, model_type)
         self._model_type = model_type
 
-    def process(self, img0: np.ndarray, img1: np.ndarray, timesteps: np.ndarray,
-                coords: np.ndarray = None) -> list:
+    def process(self, img0: np.ndarray, img1: np.ndarray, timesteps: np.ndarray) -> list:
         """
-        Execute full pipeline.
+        Execute full pipeline. NB202 and PWR share same interface: img0, img1, timesteps.
         :param img0: BCHW input image 1
         :param img1: BCHW input image 2
-        :param timesteps: BTCHW time step sequence (T typically 1)
-        :param coords: For nb202 only - BCHW coords (B, 2, H/2, W/2). PWR ignores (scale=1.0 fixed)
+        :param timesteps: BTHW time step sequence (T typically 1)
         :return: List of BCHW output arrays
         """
         assert img0.ndim == 4 and img0.dtype == np.float32
         assert img1.shape == img0.shape
-
-        if self._model_type == "nb202":
-            assert coords is not None, "NB202 requires coords"
-            return self._processor.process(img0, img1, timesteps, coords=coords)
-        else:
-            return self._processor.process(img0, img1, timesteps)
+        return self._processor.process(img0, img1, timesteps)
 
 
 if __name__ == "__main__":
     import cv2
     import torch
-    import torch.nn.functional as F
-
-    def coords_grid(b, h, w, dtype=torch.float32):
-        y, x = torch.meshgrid(torch.arange(h, dtype=dtype), torch.arange(w, dtype=dtype), indexing='ij')
-        grid = torch.stack([x, y], dim=0)[None].repeat(b, 1, 1, 1)
-        return grid
 
     # --- NB202 example ---
     # processor = TariffProcessor(
@@ -53,7 +40,13 @@ if __name__ == "__main__":
     #     "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_1080.mnn",
     #     model_type="nb202")
     # size = (1920, 1088)
-    # coords = coords_grid(1, size[1] // 2, size[0] // 2)
+
+    # processor = TariffProcessor(
+    #     "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/feature_540.mnn",
+    #     "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_540.mnn",
+    #     model_type="nb202")
+    # size = (960, 576)
+
 
     # --- PWR example ---
     # processor = TariffProcessor(
@@ -79,12 +72,7 @@ if __name__ == "__main__":
     n = 3
     timesteps = torch.concat([torch.ones(1, 1, size[1], size[0]) * i / (n + 1) for i in range(1, n + 1)], dim=1)
 
-    if processor._model_type == "nb202":
-        img0f = F.interpolate(img0, scale_factor=0.5, mode="bilinear", align_corners=False)
-        coords = coords_grid(1, img0f.size(2), img0f.size(3))
-        outputs = processor.process(img0.cpu().numpy(), img1.cpu().numpy(), timesteps.cpu().numpy(), coords=coords.cpu().numpy())
-    else:
-        outputs = processor.process(img0.cpu().numpy(), img1.cpu().numpy(), timesteps.cpu().numpy())
+    outputs = processor.process(img0.cpu().numpy(), img1.cpu().numpy(), timesteps.cpu().numpy())
 
     for i, output in enumerate(outputs):
         print(f"Output shape: {output.shape}")

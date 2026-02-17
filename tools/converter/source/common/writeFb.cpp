@@ -153,7 +153,7 @@ int postTreat(std::unique_ptr<MNN::NetT>& netT, const modelConfig& config) {
             context.quantMutableInfo = algo->mutable_quant_params();
         }
         int64_t offset = 0;
-        FileLoader fl(".__convert_external_data.bin");
+        FileLoader fl("convert_external_data.bin");
         for (auto& op : netT->oplists) {
             _postTreatOp(op, &fl, context, config, externalWeightOs, offset, needExternalWeight);
         }
@@ -165,7 +165,7 @@ int postTreat(std::unique_ptr<MNN::NetT>& netT, const modelConfig& config) {
         }
     }
     {
-        MNNRemoveFile(".__convert_external_data.bin");
+        MNNRemoveFile("convert_external_data.bin");
     }
     if (config.compressInfo->write) {
         CommonKit::protobuf2json(compressFileName.c_str(), &proto);

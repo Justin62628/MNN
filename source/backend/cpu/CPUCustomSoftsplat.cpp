@@ -54,6 +54,8 @@ ErrorCode CPUCustomSoftsplat::onExecute(const std::vector<Tensor*>& inputs, cons
     const int c = input->channel();
     const int h = input->height();
     const int w = input->width();
+    const int outH = output->height();
+    const int outW = output->width();
 
     auto inputPtr = input->host<scalar_t>();
     auto flowPtr = flow->host<scalar_t>();
@@ -66,6 +68,7 @@ ErrorCode CPUCustomSoftsplat::onExecute(const std::vector<Tensor*>& inputs, cons
     const int blockSize = threadNumber; // 保持与CUDA相同的BLOCK_DIM
     const int gridSize = (n + blockSize - 1) / (blockSize);
     const int intWH = w * h;
+    const int outWH = outW * outH;
 
     MNN_CONCURRENCY_BEGIN(tId, threadNumber) {
         const int32_t start = tId * gridSize;
@@ -74,8 +77,8 @@ ErrorCode CPUCustomSoftsplat::onExecute(const std::vector<Tensor*>& inputs, cons
         for (int32_t intIndex = start; intIndex < end; ++intIndex) {
             if (intIndex >= n) break;
             
-            // 分解索引
-            const int32_t intN = (intIndex / w / h / c) % 1;
+            // 分解索引 (NCHW: intIndex = n*C*H*W + c*H*W + y*W + x)
+            const int32_t intN = intIndex / (w * h * c);
             const int32_t intC = (intIndex / w / h) % c;
             const int32_t intY = (intIndex / w ) % h;
             const int32_t intX = intIndex % w;
@@ -100,27 +103,27 @@ ErrorCode CPUCustomSoftsplat::onExecute(const std::vector<Tensor*>& inputs, cons
             scalar_t fltSouthwest = ((scalar_t)(intNortheastX)-fltOutputX) * (fltOutputY - (scalar_t)(intNortheastY));
             scalar_t fltSoutheast = (fltOutputX - (scalar_t)(intNorthwestX)) * (fltOutputY - (scalar_t)(intNorthwestY));
 
-            if ((intNorthwestX >= 0) & (intNorthwestX < w) & (intNorthwestY >= 0) & (intNorthwestY < h))
+            if ((intNorthwestX >= 0) & (intNorthwestX < outW) & (intNorthwestY >= 0) & (intNorthwestY < outH))
             {
-                int32_t output_i = (((intN)*intWH * c) + ((intC)*intWH) + ((intNorthwestY)*w) + ((intNorthwestX) * 1));
+                int32_t output_i = (((intN)*outWH * c) + ((intC)*outWH) + ((intNorthwestY)*outW) + ((intNorthwestX) * 1));
                 outputPtr[output_i] += (scalar_t)fltInput * fltNorthwest;
             }
 
-            if ((intNortheastX >= 0) & (intNortheastX < w) & (intNortheastY >= 0) & (intNortheastY < h))
+            if ((intNortheastX >= 0) & (intNortheastX < outW) & (intNortheastY >= 0) & (intNortheastY < outH))
             {
-                int32_t output_i = (((intN)*intWH * c) + ((intC)*intWH) + ((intNortheastY)*w) + ((intNortheastX) * 1));
+                int32_t output_i = (((intN)*outWH * c) + ((intC)*outWH) + ((intNortheastY)*outW) + ((intNortheastX) * 1));
                 outputPtr[output_i] += (scalar_t)fltInput * fltNortheast;
             }
 
-            if ((intSouthwestX >= 0) & (intSouthwestX < w) & (intSouthwestY >= 0) & (intSouthwestY < h))
+            if ((intSouthwestX >= 0) & (intSouthwestX < outW) & (intSouthwestY >= 0) & (intSouthwestY < outH))
             {
-                int32_t output_i = (((intN)*intWH * c) + ((intC)*intWH) + ((intSouthwestY)*w) + ((intSouthwestX) * 1));
+                int32_t output_i = (((intN)*outWH * c) + ((intC)*outWH) + ((intSouthwestY)*outW) + ((intSouthwestX) * 1));
                 outputPtr[output_i] += (scalar_t)fltInput * fltSouthwest;
             }
 
-            if ((intSoutheastX >= 0) & (intSoutheastX < w) & (intSoutheastY >= 0) & (intSoutheastY < h))
+            if ((intSoutheastX >= 0) & (intSoutheastX < outW) & (intSoutheastY >= 0) & (intSoutheastY < outH))
             {
-                int32_t output_i = (((intN)*intWH * c) + ((intC)*intWH) + ((intSoutheastY)*w) + ((intSoutheastX) * 1));
+                int32_t output_i = (((intN)*outWH * c) + ((intC)*outWH) + ((intSoutheastY)*outW) + ((intSoutheastX) * 1));
                 outputPtr[output_i] += (scalar_t)fltInput * fltSoutheast;
             }
         }

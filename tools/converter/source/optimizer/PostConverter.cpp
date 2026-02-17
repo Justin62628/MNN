@@ -216,7 +216,7 @@ std::unique_ptr<MNN::NetT> optimizeNetImpl(std::unique_ptr<MNN::NetT>& originNet
     auto current = ExecutorScope::Current();
     current->lazyEval = true;
     current->setLazyComputeMode(Executor::LAZY_FULL);
-    current->getAttr()->externalFile = ".__convert_external_data.bin";
+    current->getAttr()->externalFile = "convert_external_data.bin";
 
     auto* ctx = Global<OptimizeContext>::Get();
     MNN_ASSERT(ctx != nullptr);
@@ -597,7 +597,7 @@ std::unique_ptr<MNN::NetT> optimizeNet(std::unique_ptr<MNN::NetT>& originNet, bo
         return std::move(originNet);
     }
     std::unique_ptr<std::ofstream, void(*)(std::ofstream*)> externalFile(
-        new std::ofstream(".__convert_external_data.bin", std::ios::binary),
+        new std::ofstream("convert_external_data.bin", std::ios::binary),
         [](std::ofstream* fs){
             fs->close();
             delete fs;
