@@ -21,8 +21,8 @@ public:
         model_type_ = (model_type == "pwr") ? ModelType::PWR : ModelType::NB202;
 
         BackendConfig backendConfig;
-        // backendConfig.precision = BackendConfig::Precision_High;
-        // backendConfig.power = BackendConfig::Power_High;
+        backendConfig.precision = BackendConfig::Precision_Low;
+        backendConfig.power = BackendConfig::Power_High;
         // backendConfig.memory = BackendConfig::Memory_Low;
         
         ScheduleConfig feat_config;
@@ -30,26 +30,24 @@ public:
         // feat_config.type  = MNN_FORWARD_CPU;
         feat_config.type  = MNN_FORWARD_OPENCL;
         // feat_config.type  = MNN_FORWARD_VULKAN;
-        // feat_config.numThread = 1;
-        // feat_config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER;
-        feat_config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER;
+        feat_config.mode = MNN_GPU_TUNING_WIDE | MNN_GPU_MEMORY_BUFFER;
 
         ScheduleConfig fusion_config;
         fusion_config.backendConfig = &backendConfig;
-        fusion_config.type  = MNN_FORWARD_OPENCL;
         // fusion_config.type  = MNN_FORWARD_CPU;
+        fusion_config.type  = MNN_FORWARD_OPENCL;
         // fusion_config.type  = MNN_FORWARD_VULKAN;
-        fusion_config.mode = MNN_GPU_TUNING_NORMAL | MNN_GPU_MEMORY_BUFFER;
+        fusion_config.mode = MNN_GPU_TUNING_WIDE | MNN_GPU_MEMORY_BUFFER;
 
         auto runtimeInfo = Interpreter::createRuntime({feat_config, fusion_config});
 
         feat_net.reset(Interpreter::createFromFile(feat_path.c_str()), Interpreter::destroy);
-        feat_net->setSessionMode(Interpreter::Session_Backend_Fix);
+        feat_net->setSessionMode(Interpreter::Session_Release);
         feat_net->setCacheFile("feat.cache");
         feat_session = feat_net->createSession(feat_config, runtimeInfo);
 
         fusion_net.reset(Interpreter::createFromFile(fusion_path.c_str()), Interpreter::destroy);
-        fusion_net->setSessionMode(Interpreter::Session_Backend_Fix);
+        fusion_net->setSessionMode(Interpreter::Session_Release);
         fusion_net->setCacheFile("fusion.cache");
         fusion_session = fusion_net->createSession(fusion_config, runtimeInfo);
 

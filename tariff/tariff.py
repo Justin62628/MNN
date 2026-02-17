@@ -2,7 +2,8 @@ import os
 import numpy as np
 import sys
 
-sys.path.append("D:/Program/VSsource/comm_repos/MNN/build/")
+sys.path.append("D:/Program/VSsource/comm_repos/MNN/build/Debug")
+# sys.path.append("D:/Program/VSsource/comm_repos/MNN/build/Release")
 import tariff_mnn
 
 
