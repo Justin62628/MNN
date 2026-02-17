@@ -1,86 +1,91 @@
+import os
 import numpy as np
 import sys
-import numpy as np
-# tariff.py
+
 sys.path.append("D:/Program/VSsource/comm_repos/MNN/build/")
 import tariff_mnn
 
+
 class TariffProcessor:
-    def __init__(self, feat_model_path: str, fusion_model_path: str):
+    def __init__(self, feat_model_path: str, fusion_model_path: str, model_type: str = "nb202"):
         """
-        初始化处理管道
-        :param feat_model_path: 特征提取模型路径
-        :param fusion_model_path: 融合模型路径
+        Initialize the Tariff pipeline.
+        :param feat_model_path: Feature extraction model path (.mnn)
+        :param fusion_model_path: Fusion model path (.mnn)
+        :param model_type: "nb202" (coords-based) or "pwr" (scale-based)
         """
-        self._processor = tariff_mnn.TariffProcessor(feat_model_path, fusion_model_path)
-    
-    def process(self, img0: np.ndarray, img1: np.ndarray, coords: np.ndarray, timesteps: np.ndarray) -> np.ndarray:
+        self._processor = tariff_mnn.TariffProcessor(feat_model_path, fusion_model_path, model_type)
+        self._model_type = model_type
+
+    def process(self, img0: np.ndarray, img1: np.ndarray, timesteps: np.ndarray,
+                coords: np.ndarray = None) -> list:
         """
-        执行完整处理流程
-        :param img0: BCHW格式输入图像1
-        :param img1: BCHW格式输入图像2 
-        :param coords: BCHW格式坐标信息
-        :param timesteps: BTCHW格式时间步序列（实际T=1）
-        :return: B x 3*T x H x W 格式输出
+        Execute full pipeline.
+        :param img0: BCHW input image 1
+        :param img1: BCHW input image 2
+        :param timesteps: BTCHW time step sequence (T typically 1)
+        :param coords: For nb202 only - BCHW coords (B, 2, H/2, W/2). PWR ignores (scale=1.0 fixed)
+        :return: List of BCHW output arrays
         """
-        # 验证输入形状
         assert img0.ndim == 4 and img0.dtype == np.float32
         assert img1.shape == img0.shape
-        
-        print(os.getpid())
-        # 执行推理
-        result = self._processor.process(img0, img1, coords, timesteps)
-        
-        # 后处理（如果需要）
-        return result
+
+        if self._model_type == "nb202":
+            assert coords is not None, "NB202 requires coords"
+            return self._processor.process(img0, img1, timesteps, coords=coords)
+        else:
+            return self._processor.process(img0, img1, timesteps)
+
 
 if __name__ == "__main__":
-    # 示例用法
     import cv2
     import torch
     import torch.nn.functional as F
-    import os
-    # processor = TariffProcessor("D:/60-fps-Project/Projects/RIFE GUI/feature_s.mnn", "D:/60-fps-Project/Projects/RIFE GUI/fusion_s.mnn")
-    # processor = TariffProcessor("D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/feature_540.mnn", 
-    #                             "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_540.mnn")
-    processor = TariffProcessor("D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/feature_1080.mnn", 
-                                "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_1080.mnn")
-    # size = (960, 576)
-    size = (1920, 1088)
-    
+
+    def coords_grid(b, h, w, dtype=torch.float32):
+        y, x = torch.meshgrid(torch.arange(h, dtype=dtype), torch.arange(w, dtype=dtype), indexing='ij')
+        grid = torch.stack([x, y], dim=0)[None].repeat(b, 1, 1, 1)
+        return grid
+
+    # --- NB202 example ---
+    # processor = TariffProcessor(
+    #     "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/feature_1080.mnn",
+    #     "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_nb202_mnn/fusion_1080.mnn",
+    #     model_type="nb202")
+    # size = (1920, 1088)
+    # coords = coords_grid(1, size[1] // 2, size[0] // 2)
+
+    # --- PWR example ---
+    # processor = TariffProcessor(
+    #     "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_pwr_mnn/feature_1080.mnn",
+    #     "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_pwr_mnn/fusion_1080.mnn",
+    #     model_type="pwr")
+    # size = (1920, 1088)
+
+    processor = TariffProcessor(
+        "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_pwr_mnn/feature_540.mnn",
+        "D:/60-fps-Project/Projects/RIFE GUI/models/vfi/mnn_tariff/models/Tariff_neu2_pwr_mnn/fusion_540.mnn",
+        model_type="pwr")
+    size = (960, 576)
+
     image_root = "D:/60-fps-Project/Projects/RIFE GUI/test_material/images/"
     output_root = os.path.join(image_root, 'out/')
-    img0 = cv2.resize(cv2.imread(os.path.join(image_root, "turbo0.png")), size)
-    img0 = cv2.resize(cv2.imread(os.path.join(image_root, "00000000.jpg")), size)
-    img1 = cv2.resize(cv2.imread(os.path.join(image_root, "00000002.jpg")), size)
+    os.makedirs(output_root, exist_ok=True)
+
     img0 = cv2.resize(cv2.imread(os.path.join(image_root, "001.png")), size)
     img1 = cv2.resize(cv2.imread(os.path.join(image_root, "002.png")), size)
     img0, img1 = map(lambda x: torch.from_numpy(x)[None, ...].permute(0, 3, 1, 2).mul(1/255.).float(), (img0, img1))
-    def preprocess(x):
-        return F.interpolate(x, scale_factor=0.5, mode="bilinear", align_corners=False)
-
-    img0f, img1f = preprocess(img0), preprocess(img1)
-
-    def coords_grid(b, h, w, device=torch.device("cuda"), dtype: torch.dtype=torch.float32):
-        y, x = torch.meshgrid(torch.arange(h), torch.arange(w))  # [H, W]
-
-        stacks = [x, y]
-
-        grid = torch.stack(stacks, dim=0)  # [2, H, W] or [3, H, W]
-
-        grid = grid[None].repeat(b, 1, 1, 1)  # [B, 2, H, W] or [B, 3, H, W]
-
-        grid = grid.to(device, dtype=dtype)
-        return grid
-    
-    coords = coords_grid(1, img0f.size(2), img0f.size(3), dtype=img0f.dtype, device=img0f.device)  # NOTE: MNN?
 
     n = 3
+    timesteps = torch.concat([torch.ones(1, 1, size[1], size[0]) * i / (n + 1) for i in range(1, n + 1)], dim=1)
 
-    timesteps = torch.concat([torch.ones_like(img0f[:, :1]) * i / (n + 1) for i in range(1, n+1)], dim=1)
+    if processor._model_type == "nb202":
+        img0f = F.interpolate(img0, scale_factor=0.5, mode="bilinear", align_corners=False)
+        coords = coords_grid(1, img0f.size(2), img0f.size(3))
+        outputs = processor.process(img0.cpu().numpy(), img1.cpu().numpy(), timesteps.cpu().numpy(), coords=coords.cpu().numpy())
+    else:
+        outputs = processor.process(img0.cpu().numpy(), img1.cpu().numpy(), timesteps.cpu().numpy())
 
-    # 执行推理
-    outputs = processor.process(img0.cpu().numpy(), img1.cpu().numpy(), coords.cpu().numpy(), timesteps.cpu().numpy())
     for i, output in enumerate(outputs):
         print(f"Output shape: {output.shape}")
         cv2.imwrite(os.path.join(output_root, f"mnn_{i}.png"), (output[0].transpose(1, 2, 0) * 255).astype(np.uint8))
