@@ -1,0 +1,93 @@
+#version 450
+
+// CustomSoftsplat: bilinear splatting with atomic add
+// Input: NCHW, Flow: N[2]HW, Output: NCHW
+// Uses uint buffer for output to support atomicCompSwap (float bit pattern)
+
+layout(std430) buffer;
+layout(set=0, binding=0) buffer OutputBuffer {
+    coherent uint data[];  // float bits stored as uint for atomic ops
+} uOutput;
+
+layout(set=0, binding=1) readonly buffer InputBuffer {
+    float data[];
+} uInput;
+
+layout(set=0, binding=2) readonly buffer FlowBuffer {
+    float data[];
+} uFlow;
+
+layout(set=0, binding=3) uniform Param {
+    int input_height;
+    int input_width;
+    int output_height;
+    int output_width;
+    int channels;
+    int batch;
+} uParam;
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+void atomicAddFloat(int index, float val) {
+    uint oldVal, newVal;
+    do {
+        oldVal = uOutput.data[index];
+        newVal = floatBitsToUint(uintBitsToFloat(oldVal) + val);
+    } while (oldVal != atomicCompSwap(uOutput.data[index], oldVal, newVal));
+}
+
+void main() {
+    int n = int(gl_GlobalInvocationID.x) / (uParam.channels * uParam.input_height * uParam.input_width);
+    int c = (int(gl_GlobalInvocationID.x) / (uParam.input_height * uParam.input_width)) % uParam.channels;
+    int hw = int(gl_GlobalInvocationID.x) % (uParam.input_height * uParam.input_width);
+    int h = hw / uParam.input_width;
+    int w = hw % uParam.input_width;
+
+    if (n >= uParam.batch || c >= uParam.channels || h >= uParam.input_height || w >= uParam.input_width) {
+        return;
+    }
+
+    int intWH = uParam.input_width * uParam.input_height;
+    int flow_offset = n * 2 * intWH + h * uParam.input_width + w;
+    float flow_x = uFlow.data[flow_offset];
+    float flow_y = uFlow.data[flow_offset + intWH];
+
+    float fltOutputX = float(w) + flow_x;
+    float fltOutputY = float(h) + flow_y;
+
+    int intNorthwestX = int(floor(fltOutputX));
+    int intNorthwestY = int(floor(fltOutputY));
+    int intNortheastX = intNorthwestX + 1;
+    int intNortheastY = intNorthwestY;
+    int intSouthwestX = intNorthwestX;
+    int intSouthwestY = intNorthwestY + 1;
+    int intSoutheastX = intNorthwestX + 1;
+    int intSoutheastY = intNorthwestY + 1;
+
+    float fltNorthwest = (float(intSoutheastX) - fltOutputX) * (float(intSoutheastY) - fltOutputY);
+    float fltNortheast = (fltOutputX - float(intSouthwestX)) * (float(intSouthwestY) - fltOutputY);
+    float fltSouthwest = (float(intNortheastX) - fltOutputX) * (fltOutputY - float(intNortheastY));
+    float fltSoutheast = (fltOutputX - float(intNorthwestX)) * (fltOutputY - float(intNorthwestY));
+
+    int input_offset = (n * uParam.channels + c) * intWH + h * uParam.input_width + w;
+    float val = uInput.data[input_offset];
+
+    int outWH = uParam.output_width * uParam.output_height;
+
+    if (intNorthwestX >= 0 && intNorthwestX < uParam.output_width && intNorthwestY >= 0 && intNorthwestY < uParam.output_height) {
+        int out_offset = (n * uParam.channels + c) * outWH + intNorthwestY * uParam.output_width + intNorthwestX;
+        atomicAddFloat(out_offset, val * fltNorthwest);
+    }
+    if (intNortheastX >= 0 && intNortheastX < uParam.output_width && intNortheastY >= 0 && intNortheastY < uParam.output_height) {
+        int out_offset = (n * uParam.channels + c) * outWH + intNortheastY * uParam.output_width + intNortheastX;
+        atomicAddFloat(out_offset, val * fltNortheast);
+    }
+    if (intSouthwestX >= 0 && intSouthwestX < uParam.output_width && intSouthwestY >= 0 && intSouthwestY < uParam.output_height) {
+        int out_offset = (n * uParam.channels + c) * outWH + intSouthwestY * uParam.output_width + intSouthwestX;
+        atomicAddFloat(out_offset, val * fltSouthwest);
+    }
+    if (intSoutheastX >= 0 && intSoutheastX < uParam.output_width && intSoutheastY >= 0 && intSoutheastY < uParam.output_height) {
+        int out_offset = (n * uParam.channels + c) * outWH + intSoutheastY * uParam.output_width + intSoutheastX;
+        atomicAddFloat(out_offset, val * fltSoutheast);
+    }
+}

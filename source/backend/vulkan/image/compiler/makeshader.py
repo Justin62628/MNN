@@ -1,62 +1,82 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 import os
+import sys
+import glob
 import json
-import sys # sys.argv
-import getopt # getopt
-import hashlib # md5 sha1
-import configparser # ini (python 3.0 use configparser)
-import fcntl # file lock
-import datetime # format file modify time
+import getopt
+import hashlib
+import configparser
+import subprocess
+import datetime
 gDefaultPath = "../execution/glsl"
 gOutputHeadFile = "../shaders/AllShader.h"
 gOutputSourceFile = "AllShader.cpp"
 
 
+def _bin2c_array(bin_path, var_name, out_path):
+    """Convert binary file to C array (xxd -i compatible), cross-platform."""
+    with open(bin_path, 'rb') as f:
+        data = f.read()
+    n = len(data)
+    lines = ['unsigned char %s[] = {' % var_name]
+    for i in range(0, n, 12):
+        chunk = data[i:i+12]
+        hexs = ', '.join('0x%02x' % b for b in chunk)
+        lines.append('  ' + hexs + ',')
+    lines.append('};')
+    lines.append('unsigned int %s_len = %u;' % (var_name, n))
+    with open(out_path, 'w') as f:
+        f.write('\n'.join(lines))
+
+
 def findAllShader(path):
-    cmd = "find " + path + " -name \"*.comp\""
-    vexs = os.popen(cmd).read().split('\n')
-    output = []
-    for f in vexs:
-        if len(f) > 1:
-            output.append(f)
-    return output
+    path = os.path.normpath(path)
+    pattern = os.path.join(path, '**', '*.comp')
+    output = [os.path.normpath(p) for p in glob.iglob(pattern, recursive=True)]
+    return sorted(output)
 
 
 def getName(fileName):
+    fileName = fileName.replace('\\', '/')
     s1 = fileName.replace("/", "_")
     s1 = s1.replace(".", "_")
-    s1=s1.replace("__","_")
+    s1 = s1.replace("__", "_")
     return s1
 
 
 def generateFileAsm(headfile, sourcefile, asmdirs):
-    cmd = "find " + asmdirs + " -name \"*.spirv\""
-    vexs = os.popen(cmd).read().split('\n')
-    output = []
-    for f in vexs:
-        if len(f) > 1:
-            output.append(f)
+    asmdirs = os.path.normpath(asmdirs)
+    pattern = os.path.join(asmdirs, '**', '*.spirv')
+    output = [os.path.normpath(p) for p in glob.iglob(pattern)]
+    output = sorted([f for f in output if len(f) > 1])
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     h = "#ifndef SPRIV_SHADER_AUTO_GENERATE_H\n#define SPRIV_SHADER_AUTO_GENERATE_H\n"
-
     cpp = "#include \"" + headfile + "\"\n"
     for s in output:
         name = getName(s)
         print(name)
-        print(os.popen("spirv-as " + s + " -o tempspv --target-env vulkan1.0").read())
+        tempspv = os.path.join(script_dir, 'tempspv')
+        temp_cpp = os.path.join(script_dir, 'temp.spv.cpp')
+        ret = subprocess.run(['spirv-as', s, '-o', tempspv, '--target-env', 'vulkan1.0'],
+                            cwd=script_dir, capture_output=True, text=True)
+        print(ret.stdout or '')
+        print(ret.stderr or '')
         h += "extern const unsigned char " + name + "[];\n"
         h += 'extern unsigned int ' + name + '_len;\n'
-        print(os.popen("xxd -i tempspv > temp.spv.cpp").read())
-        with open('temp.spv.cpp') as f:
+        _bin2c_array(tempspv, name, temp_cpp)
+        with open(temp_cpp) as f:
             allContent = f.read().replace('tempspv', name)
         cpp += 'const ' + allContent + '\n'
+        if os.path.isfile(temp_cpp):
+            os.remove(temp_cpp)
+        if os.path.isfile(tempspv):
+            os.remove(tempspv)
     h += "#endif"
     with open(headfile, "w") as f:
         f.write(h)
     with open(sourcefile, "w") as f:
         f.write(cpp)
-    os.popen('rm temp.spv.cpp').read()
-    os.popen('rm tempspv').read()
 
 
 class ShaderFile:
@@ -78,8 +98,9 @@ class ShaderFile:
         return self.rawRefFile
 
     def getFileName(self):
-        s = self.shaderFile.split('glsl')
-        s1 = 'glsl'+s[1]
+        p = self.shaderFile.replace('\\', '/')
+        s = p.split('glsl')
+        s1 = 'glsl' + s[1]
         s1 = s1.replace("/", "_")
         s1 = s1.replace(".", "_")
         return s1
@@ -127,15 +148,16 @@ class ShaderCache:
             return False
         return True
 
-    def __calcFileCheckInformation__(self,f):
-        f = f.encode('utf-8')
-        ck_size = os.path.getsize(f)
-        ck_size = '%d' %ck_size
-        ck_mtime = os.path.getmtime(f)
+    def __calcFileCheckInformation__(self, f):
+        path_str = f.decode('utf-8') if isinstance(f, bytes) else f
+        path_bytes = f.encode('utf-8') if isinstance(f, str) else f
+        ck_size = os.path.getsize(path_str)
+        ck_size = '%d' % ck_size
+        ck_mtime = os.path.getmtime(path_str)
         ck_lastmodify = datetime.datetime.fromtimestamp(ck_mtime).strftime('%Y-%m-%d %H:%M:%S %f')
-        ck_md5 = hashlib.md5(f)
-        ck_sha1 = hashlib.sha1(f)
-        return ck_size,ck_lastmodify,ck_md5.hexdigest(),ck_sha1.hexdigest()
+        ck_md5 = hashlib.md5(path_bytes)
+        ck_sha1 = hashlib.sha1(path_bytes)
+        return ck_size, ck_lastmodify, ck_md5.hexdigest(), ck_sha1.hexdigest()
 
     def __readShaderFileConfigInformation__(self,shader):
         sha1 = ''
@@ -324,7 +346,7 @@ def genShaderFileObjs(shaders, macros):
     for fileName in shaders:
         obj = ShaderFile(shader=fileName, ref=False, raw=None)
         shaderObjs.append(obj)
-        simplename = fileName.split('/')
+        simplename = fileName.replace('\\', '/').split('/')
         simplename = simplename[len(simplename)-1]
 
         if simplename in macros:
@@ -333,6 +355,7 @@ def genShaderFileObjs(shaders, macros):
                 obj = ShaderFile(shader=newName, ref=True, raw=fileName)
                 obj.setMacro(macro)
                 shaderObjs.append(obj)
+    # print(shaderObjs)
     return shaderObjs
 
 
@@ -405,21 +428,21 @@ def genCppFile(objs, inc, dst):
             if len(spirv_save) > 0:
                 out = spirv_save
                 rm = False
-            cmd = "glslangValidator -V " + s + " -Os -o " + out
-            print(os.popen(cmd).read())
+            ret = subprocess.run(['glslangValidator', '-V', s, '-Os', '-o', out],
+                                capture_output=True, text=True)
+            print(ret.stdout or '')
+            print(ret.stderr or '')
         else:
             out = spirv_cache
             rm = False
         cpp_tmp_file = 'temp.spv.cpp'
-        os.popen("xxd -i "+ out +" > " + cpp_tmp_file).read()
+        _bin2c_array(out, name, cpp_tmp_file)
         with open(cpp_tmp_file) as f:
-            rep = out.replace(os.sep,'_')
-            rep = rep.replace('.','_')
-            allContent = f.read().replace(rep, name)
+            allContent = f.read()
             cpp += 'const ' + allContent + '\n'
-        if os.path.exists(cpp_tmp_file) and os.path.isfile(cpp_tmp_file) :
+        if os.path.exists(cpp_tmp_file) and os.path.isfile(cpp_tmp_file):
             os.remove(cpp_tmp_file)
-        if rm and os.path.exists(out) and os.path.isfile(out) :
+        if rm and os.path.exists(out) and os.path.isfile(out):
             os.remove(out)
 
     with open(dst, "w") as f:
@@ -476,6 +499,7 @@ if __name__ == '__main__':
             print("cache init failed,do't use cache")
 
     shaders = findAllShader(gDefaultPath)
+    print(shaders)
     jsonFile = open(gDefaultPath +'/macro.json', 'r')
     macros = json.loads(jsonFile.read())
     jsonFile.close()
