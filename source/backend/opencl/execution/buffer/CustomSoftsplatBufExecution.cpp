@@ -26,16 +26,14 @@ ErrorCode CustomSoftsplatBufExecution::onEncode(const std::vector<Tensor *> &inp
     auto flow = inputs[1];
     auto output = outputs[0];
 
-    // 清空输出缓冲区
+    /* Clear output buffer (host-side; no extra kernel so no codegen required). */
     {
         cl_int error;
         auto outputBuffer = openCLBuffer(output);
         size_t buffer_size = output->elementSize() * sizeof(float);
-        
-        auto ptrCL = runtime->commandQueue().enqueueMapBuffer(
-            outputBuffer, CL_TRUE, CL_MAP_WRITE, 0, buffer_size, nullptr, nullptr, &error
-        );
-        if(ptrCL != nullptr && error == CL_SUCCESS) {
+        void *ptrCL = runtime->commandQueue().enqueueMapBuffer(
+            outputBuffer, CL_TRUE, CL_MAP_WRITE, 0, buffer_size, nullptr, nullptr, &error);
+        if (ptrCL != nullptr && error == CL_SUCCESS) {
             ::memset(ptrCL, 0, buffer_size);
         } else {
             MNN_ERROR("Failed to map output buffer for clearing\n");
@@ -43,8 +41,6 @@ ErrorCode CustomSoftsplatBufExecution::onEncode(const std::vector<Tensor *> &inp
         runtime->commandQueue().enqueueUnmapMemObject(outputBuffer, ptrCL);
     }
 
-    mUnits.resize(1);
-    auto &unit = mUnits[0];
     const int batch = input->buffer().dim[0].extent;
     const int channels = input->buffer().dim[1].extent;
     const int inH = input->buffer().dim[2].extent;
@@ -54,7 +50,9 @@ ErrorCode CustomSoftsplatBufExecution::onEncode(const std::vector<Tensor *> &inp
 
     std::set<std::string> buildOptions;
     buildOptions.insert("-DUSE_ATOMIC_ADD");
-    
+
+    mUnits.resize(1);
+    auto &unit = mUnits[0];
     unit.kernel = runtime->buildKernel("custom_softsplat_buf", "custom_softsplat_buf", buildOptions, mOpenCLBackend->getPrecision());
     mMaxWorkGroupSize = static_cast<uint32_t>(runtime->getMaxWorkGroupSize(unit.kernel));
 

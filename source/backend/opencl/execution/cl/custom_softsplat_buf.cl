@@ -56,50 +56,44 @@ __kernel void custom_softsplat_buf(GLOBAL_SIZE_3_DIMS
     const int w = hw % input_width;
 
     DEAL_NON_UNIFORM_DIM3(n, c, hw);
-    
     if (c >= channels) return;
 
-    const int flow_offset = n * 2 * input_height * input_width + h * input_width + w;
+    const int flow_xy_stride = input_height * input_width;
+    const int flow_offset = n * 2 * flow_xy_stride + h * input_width + w;
     float flow_x = flow[flow_offset];
-    float flow_y = flow[flow_offset + input_height * input_width];
+    float flow_y = flow[flow_offset + flow_xy_stride];
 
     float fltOutputX = (float)w + flow_x;
     float fltOutputY = (float)h + flow_y;
+    int x0 = (int)floor(fltOutputX);
+    int y0 = (int)floor(fltOutputY);
 
-    int intNorthwestX = (int)floor(fltOutputX);
-    int intNorthwestY = (int)floor(fltOutputY);
-    int intNortheastX = intNorthwestX + 1;
-    int intNortheastY = intNorthwestY;
-    int intSouthwestX = intNorthwestX;
-    int intSouthwestY = intNorthwestY + 1;
-    int intSoutheastX = intNorthwestX + 1;
-    int intSoutheastY = intNorthwestY + 1;
+    /* Bilinear weights for the four corners (NW, NE, SW, SE). */
+    float dx = fltOutputX - (float)x0;
+    float dy = fltOutputY - (float)y0;
+    float w_nw = (1.0f - dx) * (1.0f - dy);
+    float w_ne = dx * (1.0f - dy);
+    float w_sw = (1.0f - dx) * dy;
+    float w_se = dx * dy;
 
-    float fltNorthwest = (intSoutheastX - fltOutputX) * (intSoutheastY - fltOutputY);
-    float fltNortheast = (fltOutputX - intSouthwestX) * (intSouthwestY - fltOutputY);
-    float fltSouthwest = (intNortheastX - fltOutputX) * (fltOutputY - intNortheastY);
-    float fltSoutheast = (fltOutputX - intNorthwestX) * (fltOutputY - intNorthwestY);
+    const int nc = n * channels + c;
+    const int input_offset = (nc * input_height + h) * input_width + w;
+    float val = (float)input[input_offset];
 
-    const int input_offset = ((n * channels + c) * input_height + h) * input_width + w;
-    float val = input[input_offset];
+    const int out_plane = output_height * output_width;
+    const int nc_out_base = nc * out_plane;
+    int cx[4], cy[4];
+    float cw[4];
+    cx[0] = x0;     cy[0] = y0;     cw[0] = w_nw;
+    cx[1] = x0 + 1; cy[1] = y0;     cw[1] = w_ne;
+    cx[2] = x0;     cy[2] = y0 + 1; cw[2] = w_sw;
+    cx[3] = x0 + 1; cy[3] = y0 + 1; cw[3] = w_se;
 
-    if (intNorthwestX >= 0 && intNorthwestX < output_width && intNorthwestY >= 0 && intNorthwestY < output_height) {
-        int out_offset = ((n * channels + c) * output_height + intNorthwestY) * output_width + intNorthwestX;
-        atomic_add_float(output + out_offset, val * fltNorthwest);
-    }
-
-    if (intNortheastX >= 0 && intNortheastX < output_width && intNortheastY >= 0 && intNortheastY < output_height) {
-        int out_offset = ((n * channels + c) * output_height + intNortheastY) * output_width + intNortheastX;
-        atomic_add_float(output + out_offset, val * fltNortheast);
-    }
-
-    if (intSouthwestX >= 0 && intSouthwestX < output_width && intSouthwestY >= 0 && intSouthwestY < output_height) {
-        int out_offset = ((n * channels + c) * output_height + intSouthwestY) * output_width + intSouthwestX;
-        atomic_add_float(output + out_offset, val * fltSouthwest);
-    }
-
-    if (intSoutheastX >= 0 && intSoutheastX < output_width && intSoutheastY >= 0 && intSoutheastY < output_height) {
-        int out_offset = ((n * channels + c) * output_height + intSoutheastY) * output_width + intSoutheastX;
-        atomic_add_float(output + out_offset, val * fltSoutheast);
+    for (int k = 0; k < 4; k++) {
+        int ox = cx[k], oy = cy[k];
+        if (ox >= 0 && ox < output_width && oy >= 0 && oy < output_height) {
+            int out_offset = nc_out_base + oy * output_width + ox;
+            atomic_add_float(output + out_offset, val * cw[k]);
+        }
     }
 }
