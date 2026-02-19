@@ -8,14 +8,33 @@ import tariff_mnn
 
 
 class TariffProcessor:
-    def __init__(self, feat_model_path: str, fusion_model_path: str, model_type: str = "nb202"):
+    def __init__(
+        self,
+        feat_model_path: str,
+        fusion_model_path: str,
+        model_type: str = "nb202",
+        platform_size: int = 1,
+        platform_id: int = 0,
+        device_id: int = 0,
+    ):
         """
         Initialize the Tariff pipeline.
         :param feat_model_path: Feature extraction model path (.mnn)
         :param fusion_model_path: Fusion model path (.mnn)
         :param model_type: "nb202" or "pwr"
+        :param platform_size: Number of GPU cards (OpenCL)
+        :param platform_id: Which GPU card to use (OpenCL)
+        :param device_id: Which device on the card (OpenCL)
         """
-        self._processor = tariff_mnn.TariffProcessor(feat_model_path, fusion_model_path, model_type)
+        # tariff_mnn.print_opencl_devices()
+        self._processor = tariff_mnn.TariffProcessor(
+            feat_model_path,
+            fusion_model_path,
+            model_type,
+            platform_size,
+            platform_id,
+            device_id,
+        )
         self._model_type = model_type
 
     def process(self, img0: np.ndarray, img1: np.ndarray, timesteps: np.ndarray) -> list:

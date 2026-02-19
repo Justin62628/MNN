@@ -38,14 +38,18 @@ Export ONNX from `DevUtils/Torch2ONNX/TariffPwrToMnn.py` (outputs `feature_540.o
 
 ```bash
 # PWR 540p
-.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\fusion_540.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\fusion_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
+.\build\Release\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\fusion_540.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\fusion_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
 
-.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\feature_540.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\feature_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
+.\build\Release\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\fusion_540.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\fusion_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 2 --optimizePrefer 2 --batch 1 --keepInputFormat --fp16 
+
+.\build\Release\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\feature_540.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\feature_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
+
+.\build\Release\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\feature_540.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\feature_540.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --optimizePrefer 2 --batch 1 --keepInputFormat --fp16 
 
 # PWR 1080p
-.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\fusion_1080.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\fusion_1080.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
+.\build\Release\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\fusion_1080.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\fusion_1080.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
 
-.\build\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\feature_1080.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\feature_1080.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
+.\build\Release\MNNConvert.exe -f ONNX --modelFile "D:\60-fps-Project\Projects\RIFE GUI\DevUtils\Torch2ONNX\TariffPwr_export\feature_1080.onnx" --MNNModel "D:\60-fps-Project\Projects\RIFE GUI\models\vfi\mnn_tariff\models\Tariff_neu2_pwr_mnn\feature_1080.mnn"  --allowCustomOp  --saveStaticModel --optimizeLevel 0 --batch 1 --keepInputFormat
 ```
 
 ## softsplat
