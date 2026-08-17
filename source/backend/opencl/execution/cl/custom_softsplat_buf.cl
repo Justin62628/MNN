@@ -39,16 +39,23 @@ inline void atomic_add_float(volatile __global float *source, const float operan
 }  
 
 __kernel void custom_softsplat_buf(GLOBAL_SIZE_3_DIMS
-                                  __global const FLOAT *input,
-                                  __global const FLOAT *flow,
-                                  __global FLOAT *output,
+                                   __global const FLOAT *input,
+                                   __global const FLOAT *flow,
+#ifdef USE_FLOAT_ACCUM
+                                   __global float *output,
+#elif defined(USE_FIXED_POINT_ACCUM)
+                                   __global int *output,
+#else
+                                   __global FLOAT *output,
+#endif
                                   __private const int input_height,
                                   __private const int input_width,
                                   __private const int output_height,
                                   __private const int output_width,
                                   __private const int channels,
                                   __private const int batch,
-                                  __private const enum BorderMode paddingMode) {
+                                  __private const enum BorderMode paddingMode,
+                                  __private const float fixed_point_scale) {
     const int n = get_global_id(0);
     const int c = get_global_id(1);
     const int hw = get_global_id(2);
@@ -93,7 +100,35 @@ __kernel void custom_softsplat_buf(GLOBAL_SIZE_3_DIMS
         int ox = cx[k], oy = cy[k];
         if (ox >= 0 && ox < output_width && oy >= 0 && oy < output_height) {
             int out_offset = nc_out_base + oy * output_width + ox;
+#ifdef USE_FIXED_POINT_ACCUM
+            atomic_add(output + out_offset, convert_int_rte(val * cw[k] * fixed_point_scale));
+#else
             atomic_add_float(output + out_offset, val * cw[k]);
+#endif
         }
     }
+}
+
+// Convert the fixed-point int32 accumulation buffer back to the backend's
+// tensor type. The execution uses this separate write for every precision.
+__kernel void custom_softsplat_convert(GLOBAL_SIZE_3_DIMS
+#ifdef USE_FIXED_POINT_ACCUM
+                                       __global const int *input,
+#else
+                                       __global const float *input,
+#endif
+                                       __global FLOAT *output,
+                                       __private const float fixed_point_scale) {
+    const int n = get_global_id(0);
+    const int c = get_global_id(1);
+    const int hw = get_global_id(2);
+    DEAL_NON_UNIFORM_DIM3(n, c, hw);
+
+    const int plane = global_size_dim2;
+    const int offset = (n * global_size_dim1 + c) * plane + hw;
+#ifdef USE_FIXED_POINT_ACCUM
+    output[offset] = (FLOAT)((float)input[offset] / fixed_point_scale);
+#else
+    output[offset] = (FLOAT)input[offset];
+#endif
 }
